@@ -9,6 +9,11 @@
 #' Main class for creating and managing command-line argument parsers,
 #' similar to Python's argparse module.
 #'
+#' @param prog Program name (defaults to script name from command line)
+#' @param description Description text shown at the top of help output
+#' @param epilog Text shown at the bottom of help output
+#' @param formatter_class Formatter class for help output (default: "help")
+#'
 #' @export
 ArgumentParser <- S7::new_class(
     name = "ArgumentParser",

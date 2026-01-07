@@ -4,4 +4,4 @@
 ^\.Ruserdata$
 ^\.git$
 ^\.gitignore$
-^\.Rproj$
+^.*\.Rproj$
