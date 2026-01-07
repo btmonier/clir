@@ -1,0 +1,19 @@
+# R
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj.user/
+
+# Build
+*.tar.gz
+*.zip
+.Rcheck/
+
+# Documentation
+man/*.Rd
+
+# Misc
+.DS_Store
+Thumbs.db
+.Rproj.user

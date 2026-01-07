@@ -1,0 +1,24 @@
+Package: clir
+Type: Package
+Title: Command Line Argument Parser for R
+Version: 0.1.0
+Authors@R: 
+    person(
+        "Brandon Monier", 
+        email = "brandon.monier@gmail.com", 
+        role = c("aut", "cre")
+    )
+Description: 
+    An argument parser similar to Python's argparse, implemented using pure R 
+    and the S7 class system. Provides a flexible and intuitive interface for 
+    parsing command-line arguments in R scripts.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    S7 (>= 0.1.0),
+    cli (>= 3.0.0)
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.3
