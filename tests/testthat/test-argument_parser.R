@@ -27,10 +27,13 @@ test_that("ArgumentParser stores epilog", {
 test_that("ArgumentParser has default help arguments", {
     parser <- ArgumentParser(prog = "test")
     
-    # Should have --help and -h by default
-    arg_names <- sapply(parser@arguments, function(x) x@name)
-    expect_true("--help" %in% arg_names)
-    expect_true("-h" %in% arg_names)
+    # Should have help argument with both --help and -h forms
+    expect_equal(length(parser@arguments), 1)
+    help_arg <- parser@arguments[[1]]
+    expect_equal(help_arg@name, "--help")
+    expect_equal(help_arg@short_name, "-h")
+    expect_equal(help_arg@long_name, "--help")
+    expect_equal(help_arg@dest, "help")
 })
 
 test_that("add_argument adds argument to parser", {
@@ -146,3 +149,30 @@ test_that("add_argument with count action", {
     expect_equal(last_arg@action, "count")
 })
 
+test_that("add_argument accepts character vector for short and long forms", {
+    parser <- ArgumentParser(prog = "test")
+    parser <- add_argument(parser, name = c("-v", "--verbose"), action = "store_true")
+    
+    last_arg <- parser@arguments[[length(parser@arguments)]]
+    expect_equal(last_arg@name, "--verbose")
+    expect_equal(last_arg@short_name, "-v")
+    expect_equal(last_arg@long_name, "--verbose")
+})
+
+test_that("add_argument throws error for multiple short forms", {
+    parser <- ArgumentParser(prog = "test")
+    
+    expect_error(
+        add_argument(parser, name = c("-v", "-V", "--verbose")),
+        "Multiple short argument names provided"
+    )
+})
+
+test_that("add_argument throws error for multiple long forms", {
+    parser <- ArgumentParser(prog = "test")
+    
+    expect_error(
+        add_argument(parser, name = c("-v", "--verbose", "--verb")),
+        "Multiple long argument names provided"
+    )
+})

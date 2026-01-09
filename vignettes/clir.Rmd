@@ -1,0 +1,174 @@
+---
+title: "Getting started with clir"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with clir}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`clir` is a lightweight command-line argument parser for R, inspired by Python's `argparse`.
+
+This vignette focuses on the core workflow:
+
+- Create an `ArgumentParser()`
+- Add options with `add_argument()`
+- Parse inputs with `parse_args()`
+
+## A minimal parser
+
+For reproducible examples in a vignette, we pass an explicit `args` vector to `parse_args()`.
+In a real script, you typically call `parse_args(parser)` and it will read from `commandArgs(trailingOnly = TRUE)`.
+
+```{r}
+library(clir)
+
+parser <- ArgumentParser(
+  prog = "example.R",
+  description = "Process some integers."
+)
+
+parser <- add_argument(
+  parser,
+  name = "--integers",
+  help = "Integers to process",
+  type = "integer",
+  nargs = "+"
+)
+
+parser <- add_argument(
+  parser,
+  name = "--sum",
+  dest = "accumulate",
+  action = "store_true",
+  help = "Sum the integers (default: take the max)"
+)
+
+args <- parse_args(parser, args = c("--integers", "1", "2", "3", "--sum"))
+args
+```
+
+Because `--sum` uses `action = "store_true"`, it defaults to `FALSE` and becomes `TRUE` when present.
+
+## Short and long option names
+
+You can provide both a short and long form by passing a character vector to `name`.
+
+```{r}
+parser <- ArgumentParser(prog = "example.R")
+parser <- add_argument(parser, name = c("-v", "--verbose"), action = "store_true")
+
+parse_args(parser, args = c("-v"))
+```
+
+If you don't set `dest`, `clir` derives it from the primary name by removing leading dashes and converting `-` to `_`.
+For example, `--dry-run` becomes `dry_run`.
+
+## Types and defaults
+
+`type` can be `"character"` (default), `"integer"`, `"numeric"`, or `"logical"`.
+
+```{r}
+parser <- ArgumentParser(prog = "example.R")
+parser <- add_argument(parser, name = "--count", type = "integer", default = 10L)
+parser <- add_argument(parser, name = "--scale", type = "numeric", default = 1)
+parser <- add_argument(parser, name = "--flag", type = "logical", default = FALSE)
+
+parse_args(parser, args = c("--count", "42", "--scale", "0.5", "--flag", "TRUE"))
+```
+
+## Controlling how many values an option consumes (`nargs`)
+
+`nargs` controls how many values follow an option:
+
+- `"?"`: optional value (if missing, uses `default`)
+- `"+"`: one or more values
+- `"*"`: zero or more values
+- any other value: treated as “exactly one value required”
+
+```{r}
+parser <- ArgumentParser(prog = "example.R")
+parser <- add_argument(parser, name = "--config", nargs = "?", default = "default.cfg")
+parser <- add_argument(parser, name = "--files", nargs = "+")
+parser <- add_argument(parser, name = "--tags", nargs = "*")
+
+parse_args(parser, args = c("--config", "--files", "a.txt", "b.txt", "--tags", "x", "y"))
+```
+
+## Boolean flags and counters (`action`)
+
+The `action` parameter controls how an option modifies the result:
+
+- `"store"`: store a value (default)
+- `"store_true"`: boolean flag, defaults to `FALSE`
+- `"store_false"`: boolean flag, defaults to `TRUE`
+- `"count"`: increments a counter each time the option appears
+
+```{r}
+parser <- ArgumentParser(prog = "example.R")
+parser <- add_argument(parser, name = "--verbose", action = "store_true")
+parser <- add_argument(parser, name = "--no-cache", dest = "cache", action = "store_false")
+parser <- add_argument(parser, name = "-v", dest = "verbosity", action = "count")
+
+parse_args(parser, args = c("--verbose", "-v", "-v", "--no-cache"))
+```
+
+## Required options and choices
+
+Use `required = TRUE` to force the user to provide an option, and `choices` to restrict valid values.
+
+In a vignette we *demonstrate* these errors using `try()` so knitting can continue.
+
+```{r}
+parser <- ArgumentParser(prog = "example.R")
+parser <- add_argument(parser, name = "--input", required = TRUE)
+parser <- add_argument(parser, name = "--format", choices = c("csv", "json"))
+
+try(parse_args(parser, args = character()), silent = TRUE)   # missing --input
+try(parse_args(parser, args = c("--input", "data.csv", "--format", "xml")), silent = TRUE)
+parse_args(parser, args = c("--input", "data.csv", "--format", "csv"))
+```
+
+## Help output
+
+Every `ArgumentParser()` automatically includes `-h` / `--help`. Calling `parse_args()` with `--help` will print help and (in non-interactive sessions) exit the R process. For that reason, in documents and tests it’s safer to call `print_help(parser)` directly.
+
+```{r}
+parser <- ArgumentParser(
+  prog = "example.R",
+  description = "A small example showing help output.",
+  epilog = "Examples:\n  Rscript example.R --input data.csv --format csv"
+)
+parser <- add_argument(parser, name = "--input", required = TRUE, help = "Input file")
+parser <- add_argument(parser, name = "--format", choices = c("csv", "json"), default = "csv")
+
+help_lines <- capture.output(print_help(parser))
+cat(cli::ansi_strip(paste(help_lines, collapse = "\n")))
+```
+
+## Using `clir` in an `Rscript`
+
+In scripts, `parse_args(parser)` reads from the command line automatically:
+
+```r
+#!/usr/bin/env Rscript
+
+library(clir)
+
+parser <- ArgumentParser(description = "My script")
+parser <- add_argument(parser, name = "--input", required = TRUE)
+parser <- add_argument(parser, name = c("-v", "--verbose"), action = "store_true")
+
+args <- parse_args(parser)  # uses commandArgs(trailingOnly = TRUE)
+
+if (args$verbose) message("Reading: ", args$input)
+```
+
+
