@@ -95,7 +95,14 @@ init_defaults <- function(parser) {
 #' @keywords internal
 find_matching_arg <- function(parser, arg_name) {
     for (arg in parser@arguments) {
+        # Match against primary name, short_name, or long_name
         if (arg@name == arg_name) {
+            return(arg)
+        }
+        if (length(arg@short_name) > 0 && arg@short_name == arg_name) {
+            return(arg)
+        }
+        if (length(arg@long_name) > 0 && arg@long_name == arg_name) {
             return(arg)
         }
     }

@@ -27,14 +27,16 @@ print_help <- function(parser) {
     usage_parts <- c()
     for (arg in parser@arguments) {
         if (arg@dest == "help") next
+        # Use short form in usage if available, otherwise long form
+        usage_name <- if (length(arg@short_name) > 0) arg@short_name else arg@name
         if (arg@required) {
-            part <- paste0(.yellow(arg@name), " ", .cyan(toupper(arg@dest)))
+            part <- paste0(.yellow(usage_name), " ", .cyan(toupper(arg@dest)))
             usage_parts <- c(usage_parts, part)
         } else if (arg@action %in% c("store_true", "store_false", "count")) {
-            part <- paste0("[", .green(arg@name), "]")
+            part <- paste0("[", .green(usage_name), "]")
             usage_parts <- c(usage_parts, part)
         } else {
-            part <- paste0("[", .green(arg@name), " ", .cyan(toupper(arg@dest)), "]")
+            part <- paste0("[", .green(usage_name), " ", .cyan(toupper(arg@dest)), "]")
             usage_parts <- c(usage_parts, part)
         }
     }
@@ -94,10 +96,12 @@ print_help <- function(parser) {
     lines <- character()
     usage <- sprintf("usage: %s", parser@prog)
     for (arg in parser@arguments) {
+        # Use short form in usage if available
+        usage_name <- if (length(arg@short_name) > 0) arg@short_name else arg@name
         if (arg@required) {
-            usage <- paste(usage, arg@name, sep = " ")
+            usage <- paste(usage, usage_name, sep = " ")
         } else {
-            usage <- paste(usage, sprintf("[%s]", arg@name), sep = " ")
+            usage <- paste(usage, sprintf("[%s]", usage_name), sep = " ")
         }
     }
     lines <- c(lines, usage)
@@ -116,7 +120,19 @@ print_help <- function(parser) {
             } else {
                 "(no description)"
             }
-            arg_line <- sprintf("  %-20s %s", arg@name, help_text)
+            # Build combined name for display
+            arg_names <- c()
+            if (length(arg@short_name) > 0 && nchar(arg@short_name) > 0) {
+                arg_names <- c(arg_names, arg@short_name)
+            }
+            if (length(arg@long_name) > 0 && nchar(arg@long_name) > 0) {
+                arg_names <- c(arg_names, arg@long_name)
+            }
+            if (length(arg_names) == 0) {
+                arg_names <- arg@name
+            }
+            display_name <- paste(arg_names, collapse = ", ")
+            arg_line <- sprintf("  %-20s %s", display_name, help_text)
             lines <- c(lines, arg_line)
         }
         lines <- c(lines, "")
@@ -135,8 +151,23 @@ print_help <- function(parser) {
 #' @param required Whether the argument is required
 #' @keywords internal
 print_argument_help <- function(arg, required = FALSE) {
-    # Build the option name with metavar
-    opt_name <- arg@name
+    # Build the option name(s) - combine short and long forms
+    opt_parts <- c()
+    has_short <- length(arg@short_name) > 0 && nchar(arg@short_name) > 0
+    has_long <- length(arg@long_name) > 0 && nchar(arg@long_name) > 0
+
+    if (has_short) {
+        opt_parts <- c(opt_parts, arg@short_name)
+    }
+    if (has_long) {
+        opt_parts <- c(opt_parts, arg@long_name)
+    }
+    # Fallback to name if neither short nor long are set
+    if (length(opt_parts) == 0) {
+        opt_parts <- arg@name
+    }
+
+    opt_name <- paste(opt_parts, collapse = ", ")
 
     # Determine if we need metavar
     needs_value <- !arg@action %in% c("store_true", "store_false", "count")

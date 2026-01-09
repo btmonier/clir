@@ -48,20 +48,17 @@ ArgumentParser <- S7::new_class(
             formatter_class = formatter_class
         )
 
-        # Add default --help and -h arguments
+        # Add default --help and -h argument (combined)
+        # Create basic argument then set short/long names
         help_arg <- Argument(
             name   = "--help",
             dest   = "help",
             help   = "show this help message and exit",
             action = "store_true"
         )
-        h_arg <- Argument(
-            name   = "-h",
-            dest   = "help",
-            help   = "show this help message and exit",
-            action = "store_true"
-        )
-        parser_obj@arguments <- list(help_arg, h_arg)
+        help_arg@short_name <- "-h"
+        help_arg@long_name <- "--help"
+        parser_obj@arguments <- list(help_arg)
 
         return(parser_obj)
     }
@@ -72,7 +69,8 @@ ArgumentParser <- S7::new_class(
 #'
 #' @param parser An ArgumentParser object
 #' @param ... Arguments passed to Argument constructor
-#' @param name Argument name (e.g., "--foo" or "-f")
+#' @param name Argument name(s). Can be a character vector with both short (e.g., "-f")
+#'   and long (e.g., "--foo") forms. At most one short form and one long form allowed.
 #' @param dest Destination variable name
 #' @param help Help text for the argument
 #' @param default Default value
@@ -103,15 +101,23 @@ add_argument <- function(
         stop("parser must be an ArgumentParser object", call. = FALSE)
     }
 
-    # Set dest from name if not provided
+    # Parse name(s) into short and long forms
+    parsed <- parse_argument_names(name)
+    short_name <- parsed$short_name
+    long_name <- parsed$long_name
+
+    # Primary name is long form if available, otherwise short form
+    primary_name <- if (length(long_name) > 0) long_name else short_name
+
+    # Set dest from primary name if not provided
     if (is.null(dest)) {
-        dest <- gsub("^-+", "", name)
+        dest <- gsub("^-+", "", primary_name)
         dest <- gsub("-", "_", dest)
     }
 
-    # Create new argument
+    # Create new argument with base properties, then set short/long names
     arg <- Argument(
-        name     = name,
+        name     = primary_name,
         dest     = dest,
         help     = help,
         default  = default,
@@ -122,9 +128,53 @@ add_argument <- function(
         choices  = choices,
         metavar  = metavar
     )
+    # Set short and long name properties directly
+    arg@short_name <- short_name
+    arg@long_name <- long_name
 
     # Add to parser's arguments list
     parser@arguments <- append(parser@arguments, list(arg))
 
     return(invisible(parser))
+}
+
+## ----
+#' Parse argument names into short and long forms
+#'
+#' @param names Character vector of argument names
+#' @return List with short_name and long_name
+#' @keywords internal
+parse_argument_names <- function(names) {
+    short_names <- character()
+    long_names <- character()
+
+    for (n in names) {
+        if (startsWith(n, "--")) {
+            long_names <- c(long_names, n)
+        } else if (startsWith(n, "-")) {
+            short_names <- c(short_names, n)
+        } else {
+            stop(sprintf("Argument name '%s' must start with '-' or '--'", n), call. = FALSE)
+        }
+    }
+
+    # Validate: at most one short and one long
+    if (length(short_names) > 1) {
+        stop(sprintf(
+            "Multiple short argument names provided: %s. Only one short form allowed.",
+            paste(short_names, collapse = ", ")
+        ), call. = FALSE)
+    }
+
+    if (length(long_names) > 1) {
+        stop(sprintf(
+            "Multiple long argument names provided: %s. Only one long form allowed.",
+            paste(long_names, collapse = ", ")
+        ), call. = FALSE)
+    }
+
+    list(
+        short_name = if (length(short_names) > 0) short_names[1] else character(),
+        long_name = if (length(long_names) > 0) long_names[1] else character()
+    )
 }
